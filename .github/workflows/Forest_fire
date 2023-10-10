@@ -1,0 +1,263 @@
+from tree import Tree
+from button import Button
+from time import *
+from graphics import *
+import random
+
+# The following code is what happens if you were a D&D character and you dumped your Intelligence score and maxed out your Constitution score to just keep hitting your head against your code
+# till it works
+
+def undraw_forest(List): # I undraw a lot so might as well make a function 
+    for row in List:
+        for tree in row:
+            tree.undraw()
+            
+##########
+def getIndex2D(List, item): # got to learn what tuples are and how to somewhat use them
+    for i in range(len(List)):
+        for j in range(len(List[i])):
+            if List[i][j] == item:
+                return i, j
+    return None
+###########
+def did_click_tree(Forest, click):
+    for i in range(len(Forest)) :
+        for j in range(len(Forest[i])):
+            center_pt = Forest[i][j].tree_img.getAnchor() # gets the image center
+            if not (center_pt.getX() - Tree.img_width/2 < click.getX() < center_pt.getX() + Tree.img_width/2) :
+                continue
+            if not (center_pt.getY() - Tree.img_height/2 <click.getY() < center_pt.getY() + Tree.img_height/2) :
+                continue         
+# Modified the function you defined in the first class we discussed the project to make it return the indexation od the chosen tree                
+            return getIndex2D(Forest, Forest[i][j])
+###########
+def Reforestation(win): # We are Groot 
+    treeImage_Center_pointX = 14.5
+    Forest = []
+    StepY = 0
+    StepX = 0
+    for j in range(15):
+        Hedge = [] # reset Hedge to an empty list
+        StepX = 0
+        for i in range(10):
+            my_tree = Tree(Point(treeImage_Center_pointX + Tree.img_width*StepX, treeImage_Center_pointX + StepY))
+            StepX += 1
+            Hedge.append(my_tree)
+        Forest.append(Hedge)    
+        StepY += 29
+
+    # draw all the trees in the forest
+    for row in Forest:
+        for tree in row:
+            tree.draw(win)
+
+    return Forest
+
+#############
+def Start_The_Fire(ForestList, probability, GraphicsWindow, start_tree):
+    #create a copy of the ForestList to avoid modifying the original// that debugging lab still haunts me
+    newForestList = [row[:] for row in ForestList]
+    
+    row, col = start_tree
+    
+    if probability != 0 :
+        newForestList[row][col].burn_more(GraphicsWindow)
+        sleep(1)
+        
+    return newForestList
+######
+def get_neighbors(LIST, row, col):
+    neighbors = []
+    rows, cols = len(LIST), len(LIST[0])
+    for drow, dcol in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        nrow, ncol = row + drow, col + dcol
+        if 0 <= nrow < rows and 0 <= ncol < cols:
+            neighbors.append(LIST[nrow][ncol])
+    return neighbors
+#The following version of get neighbors accounts for the fire spreading diagonally uncomment it if you want to test it
+'''def get_neighbors(LIST, row, col): # every single neighbor in a 3 by 3 box
+    neighbors = []
+    rows, cols = len(LIST), len(LIST[0])
+    for drow, dcol in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)):
+        nrow, ncol = row + drow, col + dcol
+        if 0 <= nrow < rows and 0 <= ncol < cols:
+            neighbors.append(LIST[nrow][ncol])
+    neighbors.append(LIST[row][col])
+    return neighbors'''
+
+######
+def continue_the_fire(ForestList, probability, GraphicsWindow,):
+    #
+    mask = []
+    for x in range(len(ForestList)):
+        mask_row = []
+        for y in range(len(ForestList[x])):
+            mask_row.append(False)
+        mask.append(mask_row)
+    ## TO AVOID SKIPPING A FIRE STAGE OR BURN DOUBLE SPEED
+    already_burn = []
+    for i in range(len(ForestList)):
+        for j in range(len(ForestList[i])):
+            ForestList[i][j].draw(GraphicsWindow)
+            if ForestList[i][j].is_on_fire():
+                mask[i][j] = True
+                neighbors = get_neighbors(ForestList, i, j)            
+                for neighbor in neighbors:
+                    if not neighbor.is_on_fire() and random.random() < probability and neighbor not in already_burn:
+                        a,b = getIndex2D(ForestList,neighbor)
+                        mask[a][b] = True
+                        already_burn.append(ForestList[a][b])
+    for i in range(len(mask)):
+        for j in range(len(mask[i])):
+            if mask[i][j] == True:
+                ForestList[i][j].burn_more(GraphicsWindow)
+
+    return ForestList
+            
+    
+######
+def check_trees(List):# sees if theres any more fire left used for breaking out of the loop
+    num = 0
+    for i in range(len(List)):
+        for j in range(len(List[i])) :
+            if List[i][j].is_on_fire() :
+               num += 1
+    if  num > 0 :
+        return False
+    else:
+        return True
+               
+            
+    
+def main():
+    win_width = 435
+    win_length = 435
+    #
+    win = GraphWin('Forest Fire Simulator', win_width, win_length)
+    win.setCoords(0, 0, 435, 435)
+    #
+    background = Rectangle(Point(320,0), Point(435,435))
+    background.setFill("black")
+    background.draw(win)
+    #
+    button_w = 20
+    button_h = 20
+    #
+    quit_buton = Button(Point(win_length-button_w, win_width-button_h), Point(win_length,win_width), "X")
+    quit_buton.draw(win)
+    #
+    reset_buton = Button(Point(335,50),Point(420,75), "Reset")
+    reset_buton.draw(win)
+    #
+    mouse_buton = Button(Point(335,150), Point(420,175), "Mouse")
+    mouse_buton.draw(win)
+    #
+    random_button = Button(Point(335,250), Point(420,275), "Random")
+    random_button.draw(win)
+    #
+    inputBox = Entry(Point(377.5,350) , 5)
+    inputBox.setTextColor('red')
+    inputBox.draw(win)
+    ErrorText = Text(Point(380,400),"Please input a \ndecimal value")
+    ErrorText.setTextColor("red")
+    ErrorText.setSize(9)
+    #
+    
+    
+    # FORESTATION
+
+    Forest = Reforestation(win) # Let there be trees
+
+    while True:
+
+        Burned_Forest = []
+        no_more_fire = False
+        click = win.getMouse()
+        #
+        user_fire_prob = inputBox.getText()
+        while type(user_fire_prob) != float and type(user_fire_prob)!= int :            
+            try:
+                user_fire_prob = float(user_fire_prob)
+            except ValueError:
+                user_fire_prob = 0
+                ErrorText.draw(win)
+                sleep(2)
+                ErrorText.undraw()                
+        ###
+        if random_button.point_is_inside(click): # burn random
+            tree_to_burn = Forest[random.randint(0,14)][random.randint(0,9)]
+            ChosenTree = getIndex2D(Forest, tree_to_burn)
+            Burned_Forest = Start_The_Fire(Forest, user_fire_prob, win,ChosenTree)
+            for row in Forest:
+                for tree in row:
+                    tree.undraw()
+                        # you might wana draw the burned one
+            while True:
+                newlyBurned = continue_the_fire(Burned_Forest, user_fire_prob, win)
+                sleep(1)# to slow down the animation
+                undraw_forest(newlyBurned)
+                
+                
+                if check_trees(newlyBurned):
+                    for row in newlyBurned:
+                        for tree in row:
+                            tree.draw(win)
+                    break
+                        
+
+        ###################
+        elif mouse_buton.point_is_inside(click):##################
+            newClick = win.getMouse()    
+            ChosenTree = did_click_tree(Forest, newClick)
+            Burned_Forest = Start_The_Fire(Forest, user_fire_prob, win,ChosenTree)
+            for row in Forest:
+                for tree in row:
+                    tree.undraw()
+                    
+            while True:
+                newlyBurned = continue_the_fire(Burned_Forest, user_fire_prob, win)
+                sleep(1)
+                undraw_forest(newlyBurned)
+                
+                
+                if check_trees(newlyBurned):
+                    for row in newlyBurned:
+                        for tree in row:
+                            tree.draw(win)
+                    break
+        #
+        
+        elif quit_buton.point_is_inside(click):
+            win.close()
+            break
+        #
+        elif reset_buton.point_is_inside(click):
+            undraw_forest(Forest)
+            Forest.clear()
+            undraw_forest(Burned_Forest)
+            Burned_Forest.clear()
+            undraw_forest(newlyBurned)
+            newlyBurned.clear()
+            Forest = Reforestation(win)
+           
+           
+           
+           
+           
+
+
+
+ 
+    win.getMouse()
+
+    win.close()
+if __name__ == "__main__" :
+    main()
+                            
+
+
+
+
+
+
+
